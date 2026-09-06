@@ -5,7 +5,14 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE # 必須引入此模組來繪製背景色塊
+from pptx.enum.shapes import MSO_SHAPE
+import os
+
+# 強制 Streamlit 雲端伺服器在背景下載 Playwright 所需的 Chromium 瀏覽器
+os.system("playwright install chromium")
+
+# 接下來是您原本的函數...
+def parse_insurance_pdf(uploaded_file):
 
 def generate_ppt(data, discount_rate, monthly_payout, annual_payout, total_contribution, 
                  total_20_years, a_hkd, b_hkd, a_minus_b, cost_performance):
