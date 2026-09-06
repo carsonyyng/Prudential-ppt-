@@ -11,8 +11,45 @@ import os
 # 強制 Streamlit 雲端伺服器在背景下載 Playwright 所需的 Chromium 瀏覽器
 os.system("playwright install chromium")
 
-# 接下來是您原本的函數...
 def parse_insurance_pdf(uploaded_file):
+    # 這裡將使用 pdfplumber 抓取座標或表格資料
+    with pdfplumber.open(uploaded_file) as pdf:
+        pass # 這裡必須要有 pass 或是實際的縮排程式碼，否則 Python 會報錯
+        
+    # 暫時使用 Mr. Hor 的資料進行模擬回傳
+    return {
+        "name": "Hor",
+        "age": 51,
+        "gender": "M",
+        "annual_premium_usd": 3562.76, 
+        "sum_assured_usd": 60000,      
+        "val_at_86_usd": 194126        
+    }
+
+def fetch_hkmc_payout(gender, death_benefit_hkd):
+    # 背景啟動無頭瀏覽器模擬操作 HKMC 網站
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto("https://www.hkmc.com.hk/chi/online_tools/policy_reverse_mortgage_programme/policy_reverse_mortgage_calculator.html")
+        
+        if gender == "M":
+            page.click("input#gender_M")
+        else:
+            page.click("input#gender_F")
+            
+        page.fill("input#age", "65")
+        page.fill("input#death_benefit", str(death_benefit_hkd))
+        page.fill("input#policy_value", "0")
+        
+        page.click("button#calculate_btn")
+        
+        page.wait_for_selector(".result-table")
+        monthly_payout_text = page.inner_text("tr:has-text('20年') >> td.payout-value")
+        
+        browser.close()
+        
+        return float(monthly_payout_text.replace(',', '').replace('$', '').strip())
 
 def generate_ppt(data, discount_rate, monthly_payout, annual_payout, total_contribution, 
                  total_20_years, a_hkd, b_hkd, a_minus_b, cost_performance):
