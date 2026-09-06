@@ -4,6 +4,7 @@ from playwright.sync_api import sync_playwright
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
+from pptx.dml.color import RGBColor  # <-- Add this line
 
 def parse_insurance_pdf(uploaded_file):
     # PDF data extraction logic goes here
@@ -100,7 +101,7 @@ def generate_ppt(data, discount_rate, monthly_payout, annual_payout, total_contr
     p_rhs_lower = tf_rhs_lower.add_paragraph()
     p_rhs_lower.text = f"共約港幣 ${a_minus_b:,.0f} 給至愛親人"
     p_rhs_lower.font.bold = True
-    p_rhs_lower.font.color.rgb = pptx.dml.color.RGBColor(237, 27, 46) # Prudential Red
+    p_rhs_lower.font.color.rgb = RGBColor(237, 27, 46) # Prudential Red
 
     # LHS (Bottom-Left): Cost Performance Calculation
     tx_lhs_lower = slide.shapes.add_textbox(Inches(0.5), Inches(5), Inches(4.5), Inches(1.5))
