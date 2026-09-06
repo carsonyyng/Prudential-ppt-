@@ -1,13 +1,16 @@
 import streamlit as st
 import pdfplumber
 from playwright.sync_api import sync_playwright
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
 
 def parse_insurance_pdf(uploaded_file):
-    # 這裡將使用 pdfplumber 抓取座標或表格資料
+    # PDF data extraction logic goes here
     with pdfplumber.open(uploaded_file) as pdf:
         pass
         
-    # 暫時使用 Mr. Hor 的資料進行模擬回傳
+    # Mock data return for testing
     return {
         "name": "Hor",
         "age": 51,
@@ -18,24 +21,23 @@ def parse_insurance_pdf(uploaded_file):
     }
 
 def fetch_hkmc_payout(gender, death_benefit_hkd):
-    # 背景啟動無頭瀏覽器模擬操作 HKMC 網站
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto("https://www.hkmc.com.hk/chi/online_tools/policy_reverse_mortgage_programme/policy_reverse_mortgage_calculator.html")
         
         if gender == "M":
-            page.click("input#gender_M") # 需替換為實際網頁元素 ID
+            page.click("input#gender_M") 
         else:
-            page.click("input#gender_F") # 需替換為實際網頁元素 ID
+            page.click("input#gender_F") 
             
         page.fill("input#age", "65")
         page.fill("input#death_benefit", str(death_benefit_hkd))
         page.fill("input#policy_value", "0")
         
-        page.click("button#calculate_btn") # 需替換為實際按鈕 ID
+        page.click("button#calculate_btn") 
         
-        page.wait_for_selector(".result-table") # 需替換為實際表格 Class
+        page.wait_for_selector(".result-table") 
         monthly_payout_text = page.inner_text("tr:has-text('20年') >> td.payout-value")
         
         browser.close()
@@ -45,23 +47,75 @@ def fetch_hkmc_payout(gender, death_benefit_hkd):
 def generate_ppt(data, discount_rate, monthly_payout, annual_payout, total_contribution, 
                  total_20_years, a_hkd, b_hkd, a_minus_b, cost_performance):
     
-    # 這裡為 python-pptx 排版邏輯預留的變數對接區域：
-    # [右側 RHS 區塊]
-    # - 每月提取港幣: monthly_payout
-    # - 全年約港幣: annual_payout
-    # - 共收取現金約港幣: total_20_years
-    # - 身故賠償展示 (約港幣 A-B): A 顯示為 a_hkd, B 顯示為 b_hkd
-    # - 共約港幣——————給至愛親人: a_minus_b
-    # [左下側 LHS 區塊]
-    # - 總供款港幣: total_contribution
-    # - 性價比 =: cost_performance
+    # Create a new PowerPoint presentation
+    prs = Presentation()
+    # Use a blank slide layout
+    slide_layout = prs.slide_layouts[6] 
+    slide = prs.slides.add_slide(slide_layout)
 
-    ppt_file_path = f"generated_ppt_{data['name']}.pptx"
+    # Top Left: Exchange Rate & Discount
+    tx_top_left = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(4), Inches(1))
+    tf_top_left = tx_top_left.text_frame
+    tf_top_left.text = f"USD:HKD = 1:7.85\n首年折扣 ：{discount_rate} %"
+
+    # Top Middle: Icon, Name, Age
+    icon = "👨" if data['gender'] == "M" else "👩"
+    tx_title = slide.shapes.add_textbox(Inches(3), Inches(0.5), Inches(4), Inches(1))
+    tf_title = tx_title.text_frame
+    p_title = tf_title.paragraphs[0]
+    p_title.text = f"{icon} {data['name']} ({data['age']}歲)"
+    p_title.font.size = Pt(28)
+    p_title.font.bold = True
+    p_title.alignment = PP_ALIGN.CENTER
+
+    # LHS (Middle-Left): Total Contribution
+    tx_lhs = slide.shapes.add_textbox(Inches(0.5), Inches(2), Inches(4), Inches(2))
+    tf_lhs = tx_lhs.text_frame
+    tf_lhs.text = "總供款港幣"
+    p_lhs = tf_lhs.add_paragraph()
+    p_lhs.text = f"${total_contribution:,.0f}"
+    p_lhs.font.size = Pt(24)
+    p_lhs.font.bold = True
+
+    # RHS (Middle-Right): HKMC Payouts
+    tx_rhs = slide.shapes.add_textbox(Inches(5), Inches(2), Inches(4.5), Inches(2.5))
+    tf_rhs = tx_rhs.text_frame
+    tf_rhs.text = "每月提取港幣"
+    p_rhs1 = tf_rhs.add_paragraph()
+    p_rhs1.text = f"${monthly_payout:,.0f}"
+    p_rhs1.font.size = Pt(20)
+    p_rhs1.font.bold = True
     
-    # 暫時生成一個空檔案供下載測試
-    with open(ppt_file_path, "w") as f:
-        f.write("PPTX content goes here")
-        
+    p_rhs2 = tf_rhs.add_paragraph()
+    p_rhs2.text = f"\n全年約港幣\n${annual_payout:,.0f}"
+    
+    p_rhs3 = tf_rhs.add_paragraph()
+    p_rhs3.text = f"\n共收取現金約港幣\n${total_20_years:,.0f}"
+    p_rhs3.font.bold = True
+
+    # RHS (Lower-Right): Death Benefit Calculation (A-B)
+    tx_rhs_lower = slide.shapes.add_textbox(Inches(5), Inches(5), Inches(4.5), Inches(1.5))
+    tf_rhs_lower = tx_rhs_lower.text_frame
+    tf_rhs_lower.text = f"身故賠償：約港幣 ${a_hkd:,.0f} - ${b_hkd:,.0f}"
+    p_rhs_lower = tf_rhs_lower.add_paragraph()
+    p_rhs_lower.text = f"共約港幣 ${a_minus_b:,.0f} 給至愛親人"
+    p_rhs_lower.font.bold = True
+    p_rhs_lower.font.color.rgb = pptx.dml.color.RGBColor(237, 27, 46) # Prudential Red
+
+    # LHS (Bottom-Left): Cost Performance Calculation
+    tx_lhs_lower = slide.shapes.add_textbox(Inches(0.5), Inches(5), Inches(4.5), Inches(1.5))
+    tf_lhs_lower = tx_lhs_lower.text_frame
+    tf_lhs_lower.text = f"性價= {cost_performance:.2f}X"
+    tf_lhs_lower.paragraphs[0].font.size = Pt(22)
+    tf_lhs_lower.paragraphs[0].font.bold = True
+    
+    p_lhs_lower = tf_lhs_lower.add_paragraph()
+    p_lhs_lower.text = f"(${total_20_years:,.0f} + ${a_minus_b:,.0f}) / ${total_contribution:,.0f}"
+    p_lhs_lower.font.size = Pt(12)
+
+    # Save the actual PPTX file
+    ppt_file_path = f"generated_ppt_{data['name']}.pptx"
+    prs.save(ppt_file_path)
     return ppt_file_path
 
 # --- Streamlit UI ---
@@ -74,33 +128,27 @@ uploaded_file = st.file_uploader("上傳保單建議書 (PDF)", type="pdf")
 
 if st.button("掃描數據並生成 PPT"):
     if uploaded_file is not None and discount_rate > 0:
-        
         with st.spinner('🔄 正在讀取 PDF 數據...'):
             data = parse_insurance_pdf(uploaded_file)
             st.success(f"成功擷取客戶資訊: {data['name']}, {data['age']}歲, {data['gender']}")
             
         with st.spinner('🧮 正在進行逆按揭與財務公式計算...'):
-            # 1. 基礎轉換
             death_benefit_hkd = data['sum_assured_usd'] * EXCHANGE_RATE
             total_contribution_hkd = data['annual_premium_usd'] * 9.9 * EXCHANGE_RATE
             
-            # 2. 獲取 HKMC 每月年金 (使用 try-except 在爬蟲未配置好前用模擬數據測試)
             try:
                 monthly_payout_hkd = fetch_hkmc_payout(data['gender'], death_benefit_hkd)
             except Exception as e:
                 st.warning("HKMC 爬蟲選擇器尚未配置，使用模擬數據繼續流程。")
                 monthly_payout_hkd = death_benefit_hkd * 0.0025
                 
-            # 3. 提取現金計算
             annual_payout_hkd = monthly_payout_hkd * 12
-            total_20_years_hkd = annual_payout_hkd * 20  # 共收取現金約港幣
+            total_20_years_hkd = annual_payout_hkd * 20  
             
-            # 4. 身故賠償 A-B 算式
-            a_hkd = data['val_at_86_usd'] * EXCHANGE_RATE # 將 @ANB 86歲 (A)+(B) 轉為港幣
+            a_hkd = data['val_at_86_usd'] * EXCHANGE_RATE 
             b_hkd = annual_payout_hkd * 1.46
-            a_minus_b_hkd = a_hkd - b_hkd                 # 共約港幣——————給至愛親人
+            a_minus_b_hkd = a_hkd - b_hkd                 
             
-            # 5. 最終性價比計算
             cost_performance = (total_20_years_hkd + a_minus_b_hkd) / total_contribution_hkd
 
         with st.spinner('📝 正在排版並生成 PPTX 檔案...'):
