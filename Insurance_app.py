@@ -7,8 +7,9 @@ from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 import subprocess
+import os
 
-# 安全地在背景安裝瀏覽器，並快取起來確保每次重啟只執行一次
+# 安全地在背景安裝瀏覽器
 @st.cache_resource
 def install_browser():
     subprocess.run(["playwright", "install", "chromium"])
@@ -19,11 +20,11 @@ def parse_insurance_pdf(uploaded_file):
         
     return {
         "name": "Hor",
-        "age": 51,
+        "age": 42, 
         "gender": "M",
-        "annual_premium_usd": 3562.76, 
-        "sum_assured_usd": 60000,      
-        "val_at_86_usd": 194126        
+        "annual_premium_usd": 5349.17, 
+        "sum_assured_usd": 129006,     
+        "val_at_86_usd": 414965        
     }
 
 def fetch_hkmc_payout(gender, death_benefit_hkd):
@@ -50,134 +51,153 @@ def fetch_hkmc_payout(gender, death_benefit_hkd):
         
         return float(monthly_payout_text.replace(',', '').replace('$', '').strip())
 
-def generate_ppt(data, discount_rate, monthly_payout, annual_payout, total_contribution, 
+def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
+                 monthly_payout, annual_payout, total_contribution, 
                  total_20_years, a_hkd, b_hkd, a_minus_b, cost_performance):
     
     prs = Presentation()
     slide_layout = prs.slide_layouts[6] 
     slide = prs.slides.add_slide(slide_layout)
 
-    # 左上角: 匯率與首年折扣
-    tx_top_left = slide.shapes.add_textbox(Inches(0.4), Inches(0.4), Inches(3), Inches(1))
-    tf_top_left = tx_top_left.text_frame
-    tf_top_left.text = f"USD:HKD = 1:7.85\n首年折扣 ：{discount_rate} %"
-    tf_top_left.paragraphs[0].font.size = Pt(14)
-    if len(tf_top_left.paragraphs) > 1:
-        tf_top_left.paragraphs[1].font.size = Pt(14)
+    # 1. 最左側第一個箭頭區塊 (藍色 Blue)
+    hdr1 = slide.shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(0.2), Inches(0.5), Inches(5.5), Inches(0.9))
+    hdr1.fill.solid()
+    hdr1.fill.fore_color.rgb = RGBColor(68, 114, 196) # 標準藍色
+    hdr1.line.color.rgb = RGBColor(255, 255, 255)
+    
+    prefix = "MR" if data['gender'] == "M" else "MS"
+    tf1 = hdr1.text_frame
+    p1 = tf1.paragraphs[0]
+    p1.text = f"   {prefix} {data['name'].upper()} ({data['age']} 歲)"
+    p1.font.size = Pt(26)
+    p1.font.color.rgb = RGBColor(255, 255, 255)
+    p1.alignment = PP_ALIGN.LEFT
 
-    # 頂部置中: 圖示, 姓名, 年齡
-    icon = "👨" if data['gender'] == "M" else "👩"
-    tx_title = slide.shapes.add_textbox(Inches(3), Inches(0.3), Inches(4), Inches(1))
-    tf_title = tx_title.text_frame
-    p_title = tf_title.paragraphs[0]
-    p_title.text = f"{icon} {data['name']} ({data['age']}歲)"
-    p_title.font.size = Pt(32)
-    p_title.font.bold = True
-    p_title.font.color.rgb = RGBColor(237, 27, 46) 
-    p_title.alignment = PP_ALIGN.CENTER
+    body1 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.2), Inches(1.4), Inches(3.2), Inches(4.5))
+    body1.fill.solid()
+    body1.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    body1.line.color.rgb = RGBColor(68, 114, 196) # 邊框對齊標題藍色
+    tf1_body = body1.text_frame
+    tf1_body.margin_left = Inches(0.15)
+    tf1_body.margin_top = Inches(0.15)
+    
+    p = tf1_body.paragraphs[0]
+    p.text = "投保自主未來產品\n(10年供款)\n"
+    p.font.size = Pt(16)
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    
+    p = tf1_body.add_paragraph()
+    p.text = f"每年保費港幣 {annual_premium_hkd:,.0f}\n投保額港幣 {death_benefit_hkd:,.0f}\n\n\n"
+    p.font.size = Pt(16)
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    
+    p = tf1_body.add_paragraph()
+    p.text = f"(10年後{data['age'] + 10}歲)\n"
+    p.font.size = Pt(16)
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    
+    p = tf1_body.add_paragraph()
+    p.text = "總供款港幣 "
+    p.font.size = Pt(16)
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    run = p.add_run()
+    run.text = f"{total_contribution:,.0f}"
+    run.font.color.rgb = RGBColor(68, 114, 196) # 文字對齊標題藍色
 
-    # ==========================================
-    # 左側區塊 (LHS) - 藍綠色背景
-    # ==========================================
-    lhs_shape = slide.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.5), Inches(1.5), Inches(4.2), Inches(5.0)
-    )
-    lhs_shape.fill.solid()
-    lhs_shape.fill.fore_color.rgb = RGBColor(218, 238, 238)
-    lhs_shape.line.color.rgb = RGBColor(100, 180, 180)
+
+    # 2. 中間第二個箭頭區塊 (Tiffany 藍)
+    hdr2 = slide.shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(3.3), Inches(1.1), Inches(5.5), Inches(1.0))
+    hdr2.fill.solid()
+    hdr2.fill.fore_color.rgb = RGBColor(10, 186, 181) # Tiffany Blue
+    hdr2.line.color.rgb = RGBColor(255, 255, 255)
     
-    tx_lhs = slide.shapes.add_textbox(Inches(0.5), Inches(1.8), Inches(4.2), Inches(4.5))
-    tf_lhs = tx_lhs.text_frame
+    tf2 = hdr2.text_frame
+    p2 = tf2.paragraphs[0]
+    p2.text = "   (65歲時)再用保單逆按形式\n   提取20年年金"
+    p2.font.size = Pt(20)
+    p2.font.color.rgb = RGBColor(255, 255, 255)
+    p2.alignment = PP_ALIGN.LEFT
+
+    body2 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(3.3), Inches(2.1), Inches(3.2), Inches(3.8))
+    body2.fill.solid()
+    body2.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    body2.line.color.rgb = RGBColor(10, 186, 181) # 邊框對齊標題 Tiffany Blue
+    tf2_body = body2.text_frame
+    tf2_body.margin_left = Inches(0.15)
+    tf2_body.margin_top = Inches(0.15)
     
-    p = tf_lhs.paragraphs[0]
-    p.text = "總供款港幣"
-    p.font.size = Pt(22)
-    p.alignment = PP_ALIGN.CENTER
+    p = tf2_body.paragraphs[0]
+    p.text = f"每月提取約港幣 {monthly_payout:,.0f}\n(全年約港幣 {annual_payout:,.0f})"
+    p.font.size = Pt(16)
+    p.font.color.rgb = RGBColor(0, 0, 0)
+
+
+    # 3. 最右側第三個箭頭區塊 (綠色 Green)
+    hdr3 = slide.shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(6.4), Inches(1.8), Inches(3.5), Inches(0.9))
+    hdr3.fill.solid()
+    hdr3.fill.fore_color.rgb = RGBColor(112, 173, 71) # 標準綠色
+    hdr3.line.color.rgb = RGBColor(255, 255, 255)
     
-    p = tf_lhs.add_paragraph()
-    p.text = f"${total_contribution:,.0f}"
-    p.font.size = Pt(36)
-    p.font.bold = True
-    p.font.color.rgb = RGBColor(0, 102, 102)
-    p.alignment = PP_ALIGN.CENTER
+    tf3 = hdr3.text_frame
+    p3 = tf3.paragraphs[0]
+    p3.text = "   再20年後(85歲)"
+    p3.font.size = Pt(22)
+    p3.font.color.rgb = RGBColor(255, 255, 255)
+    p3.alignment = PP_ALIGN.LEFT
+
+    body3 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.4), Inches(2.7), Inches(3.4), Inches(3.2))
+    body3.fill.solid()
+    body3.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    body3.line.color.rgb = RGBColor(112, 173, 71) # 邊框對齊標題綠色
+    tf3_body = body3.text_frame
+    tf3_body.margin_left = Inches(0.1)
+    tf3_body.margin_top = Inches(0.15)
     
-    tf_lhs.add_paragraph().text = "\n\n"
-    
-    p = tf_lhs.add_paragraph()
-    p.text = f"性價= {cost_performance:.2f}X"
-    p.font.size = Pt(30)
-    p.font.bold = True
-    p.font.color.rgb = RGBColor(237, 27, 46)
-    p.alignment = PP_ALIGN.CENTER
-    
-    p = tf_lhs.add_paragraph()
-    p.text = f"(${total_20_years:,.0f} + ${a_minus_b:,.0f}) / ${total_contribution:,.0f}"
+    p = tf3_body.paragraphs[0]
+    p.text = "共收取現金約港幣"
     p.font.size = Pt(14)
-    p.font.color.rgb = RGBColor(85, 85, 85)
-    p.alignment = PP_ALIGN.CENTER
-
-    # ==========================================
-    # 右側區塊 (RHS) - 淺綠色背景
-    # ==========================================
-    rhs_shape = slide.shapes.add_shape(
-        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(5.0), Inches(1.5), Inches(4.5), Inches(5.0)
-    )
-    rhs_shape.fill.solid()
-    rhs_shape.fill.fore_color.rgb = RGBColor(224, 245, 224) 
-    rhs_shape.line.color.rgb = RGBColor(120, 200, 120)
-
-    tx_rhs = slide.shapes.add_textbox(Inches(5.0), Inches(1.6), Inches(4.5), Inches(4.8))
-    tf_rhs = tx_rhs.text_frame
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    run = p.add_run()
+    run.text = f"{total_20_years:,.0f}"
+    run.font.color.rgb = RGBColor(255, 0, 0)
     
-    p = tf_rhs.paragraphs[0]
-    p.text = "每月提取港幣"
-    p.font.size = Pt(18)
-    p.alignment = PP_ALIGN.CENTER
+    p = tf3_body.add_paragraph()
+    p.text = "\n身故賠償\n"
+    p.text += f"約港幣 {a_hkd:,.0f} - {b_hkd:,.0f}\n(逆按欠款) ，\n\n"
+    p.font.size = Pt(14)
+    p.font.color.rgb = RGBColor(0, 0, 0)
     
-    p = tf_rhs.add_paragraph()
-    p.text = f"${monthly_payout:,.0f}"
-    p.font.size = Pt(32)
-    p.font.bold = True
-    p.font.color.rgb = RGBColor(34, 139, 34)
-    p.alignment = PP_ALIGN.CENTER
-    
-    p = tf_rhs.add_paragraph()
-    p.text = "\n全年約港幣"
+    p = tf3_body.add_paragraph()
+    p.text = "共約港幣 "
     p.font.size = Pt(16)
-    p.alignment = PP_ALIGN.CENTER
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    run = p.add_run()
+    run.text = f"{a_minus_b:,.0f}"
+    run.font.color.rgb = RGBColor(255, 0, 0)
+    run2 = p.add_run()
+    run2.text = " 給至愛親人"
+    run2.font.color.rgb = RGBColor(0, 0, 0)
+
+    # 4. 左下角：性價比公式
+    tx_bottom = slide.shapes.add_textbox(Inches(0.2), Inches(6.2), Inches(6.0), Inches(1.0))
+    tf_bottom = tx_bottom.text_frame
+    p_bot = tf_bottom.paragraphs[0]
+    p_bot.text = f"性價= {cost_performance:.2f}X"
+    p_bot.font.size = Pt(20)
+    p_bot.font.bold = True
+    p_bot.font.color.rgb = RGBColor(237, 27, 46) 
     
-    p = tf_rhs.add_paragraph()
-    p.text = f"${annual_payout:,.0f}"
-    p.font.size = Pt(24)
-    p.font.bold = True
-    p.font.color.rgb = RGBColor(34, 139, 34)
-    p.alignment = PP_ALIGN.CENTER
-    
-    p = tf_rhs.add_paragraph()
-    p.text = "\n共收取現金約港幣"
-    p.font.size = Pt(20)
-    p.alignment = PP_ALIGN.CENTER
-    
-    p = tf_rhs.add_paragraph()
-    p.text = f"${total_20_years:,.0f}"
-    p.font.size = Pt(28)
-    p.font.bold = True
-    p.font.color.rgb = RGBColor(0, 128, 0)
-    p.alignment = PP_ALIGN.CENTER
-    
-    tf_rhs.add_paragraph().text = "\n"
-    
-    p = tf_rhs.add_paragraph()
-    p.text = f"身故賠償：約港幣 ${a_hkd:,.0f} - ${b_hkd:,.0f}"
-    p.font.size = Pt(16)
-    p.alignment = PP_ALIGN.CENTER
-    
-    p = tf_rhs.add_paragraph()
-    p.text = f"共約港幣 ${a_minus_b:,.0f} 給至愛親人"
-    p.font.size = Pt(20)
-    p.font.bold = True
-    p.font.color.rgb = RGBColor(237, 27, 46)
-    p.alignment = PP_ALIGN.CENTER
+    p_bot_sub = tf_bottom.add_paragraph()
+    p_bot_sub.text = f"(${total_20_years:,.0f} + ${a_minus_b:,.0f}) / ${total_contribution:,.0f}"
+    p_bot_sub.font.size = Pt(12)
+    p_bot_sub.font.color.rgb = RGBColor(85, 85, 85)
+
+    # 新增的頂部提醒文字: 匯率與折扣紀錄
+    tx_top_left = slide.shapes.add_textbox(Inches(0.2), Inches(0.1), Inches(3), Inches(0.5))
+    tf_top_left = tx_top_left.text_frame
+    tf_top_left.text = f"USD:HKD = 1:7.85 | 首年折扣：{discount_rate}%"
+    tf_top_left.paragraphs[0].font.size = Pt(12)
+    tf_top_left.paragraphs[0].font.color.rgb = RGBColor(128, 128, 128)
 
     ppt_file_path = f"generated_ppt_{data['name']}.pptx"
     prs.save(ppt_file_path)
@@ -186,7 +206,6 @@ def generate_ppt(data, discount_rate, monthly_payout, annual_payout, total_contr
 # --- Streamlit UI ---
 st.title("📊 保單逆按揭分析與 PPT 產生器")
 
-# 啟動時先呼叫安裝函數 (如果已安裝會瞬間跳過)
 install_browser()
 
 EXCHANGE_RATE = 7.85
@@ -194,14 +213,19 @@ discount_rate = st.number_input("首年折扣 (%)", min_value=0.0, max_value=100
 uploaded_file = st.file_uploader("上傳保單建議書 (PDF)", type="pdf")
 
 if st.button("掃描數據並生成 PPT"):
-    if uploaded_file is not None and discount_rate > 0:
+    if uploaded_file is not None:
         with st.spinner('🔄 正在讀取 PDF 數據...'):
             data = parse_insurance_pdf(uploaded_file)
             st.success(f"成功擷取客戶資訊: {data['name']}, {data['age']}歲, {data['gender']}")
             
-        with st.spinner('🧮 正在與 HKMC 伺服器連線計算逆按揭 (若為雲端首次執行需時較長)...'):
+        with st.spinner('🧮 正在與 HKMC 伺服器連線計算逆按揭...'):
+            # 計算基本港幣參數
+            annual_premium_hkd = data['annual_premium_usd'] * EXCHANGE_RATE
             death_benefit_hkd = data['sum_assured_usd'] * EXCHANGE_RATE
-            total_contribution_hkd = data['annual_premium_usd'] * 9.9 * EXCHANGE_RATE
+            
+            # 使用新邏輯計算總供款: 乘數 = 10 - (discount_rate / 100)
+            discount_multiplier = 10.0 - (discount_rate / 100.0)
+            total_contribution_hkd = annual_premium_hkd * discount_multiplier
             
             try:
                 monthly_payout_hkd = fetch_hkmc_payout(data['gender'], death_benefit_hkd)
@@ -222,6 +246,8 @@ if st.button("掃描數據並生成 PPT"):
             ppt_path = generate_ppt(
                 data=data,
                 discount_rate=discount_rate,
+                annual_premium_hkd=annual_premium_hkd,
+                death_benefit_hkd=death_benefit_hkd,
                 monthly_payout=monthly_payout_hkd,
                 annual_payout=annual_payout_hkd,
                 total_contribution=total_contribution_hkd,
@@ -242,4 +268,4 @@ if st.button("掃描數據並生成 PPT"):
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
             )
     else:
-        st.error("請確認已填寫首年折扣並上傳 PDF 檔案。")
+        st.error("請上傳 PDF 檔案。")
