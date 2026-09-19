@@ -3,7 +3,7 @@ import pdfplumber
 from playwright.sync_api import sync_playwright
 from pptx import Presentation
 from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 import subprocess
@@ -96,6 +96,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     body1.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body1.line.color.rgb = RGBColor(68, 114, 196) 
     tf1_body = body1.text_frame
+    tf1_body.vertical_anchor = MSO_ANCHOR.TOP # 強制文字對齊頂部
     tf1_body.margin_left = Inches(0.15)
     tf1_body.margin_top = Inches(0.15)
     
@@ -103,21 +104,25 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p.text = "投保自主未來產品\n(10年供款)\n"
     p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT # 強制靠左對齊
     
     p = tf1_body.add_paragraph()
     p.text = f"每年保費港幣 {annual_premium_hkd:,.0f}\n投保額港幣 {death_benefit_hkd:,.0f}\n\n\n"
     p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     
     p = tf1_body.add_paragraph()
     p.text = f"(10年後{data['age'] + 10}歲)\n"
     p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     
     p = tf1_body.add_paragraph()
     p.text = "總供款港幣 "
     p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     run = p.add_run()
     run.text = f"{total_contribution:,.0f}"
     run.font.color.rgb = RGBColor(68, 114, 196) 
@@ -146,6 +151,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     body2.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body2.line.color.rgb = RGBColor(10, 186, 181) 
     tf2_body = body2.text_frame
+    tf2_body.vertical_anchor = MSO_ANCHOR.TOP # 強制文字對齊頂部
     tf2_body.margin_left = Inches(0.15)
     tf2_body.margin_top = Inches(0.15)
     
@@ -153,6 +159,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p.text = f"每月提取約港幣 {monthly_payout:,.0f}\n(全年約港幣 {annual_payout:,.0f})"
     p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT # 強制靠左對齊
 
     # ==========================================
     # 3. 最右側第三個箭頭區塊 (綠色 Green)
@@ -173,21 +180,21 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p3.font.color.rgb = RGBColor(255, 255, 255)
     p3.alignment = PP_ALIGN.LEFT
 
-    # 稍微拉長方塊高度至 3.6 吋以容納放大的字體與空白行
     body3 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.4), Inches(3.1), Inches(3.5), Inches(3.6))
     body3.fill.solid()
     body3.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body3.line.color.rgb = RGBColor(112, 173, 71) 
     tf3_body = body3.text_frame
+    tf3_body.vertical_anchor = MSO_ANCHOR.TOP # 強制文字對齊頂部
     tf3_body.word_wrap = True 
     tf3_body.margin_left = Inches(0.1)
     tf3_body.margin_top = Inches(0.1)
     
-    # 放大部分文字，並加強重點顏色
     p = tf3_body.paragraphs[0]
     p.text = "共收取現金約港幣 "
     p.font.size = Pt(18)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     run = p.add_run()
     run.text = f"{total_20_years:,.0f}"
     run.font.size = Pt(18)
@@ -197,13 +204,14 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p.text = "\n身故賠償"
     p.font.size = Pt(20)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     
     p = tf3_body.add_paragraph()
     p.text = f"約港幣 {a_hkd:,.0f} - {b_hkd:,.0f} (逆按欠款) ，"
-    p.font.size = Pt(16)
+    p.font.size = Pt(12)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     
-    # 增加空白行將算式與結果拉開
     p_spacer = tf3_body.add_paragraph()
     p_spacer.text = "\n\n" 
     p_spacer.font.size = Pt(14)
@@ -212,6 +220,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p.text = "共約港幣 "
     p.font.size = Pt(20)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    p.alignment = PP_ALIGN.LEFT
     run = p.add_run()
     run.text = f"{a_minus_b:,.0f}"
     run.font.size = Pt(20)
