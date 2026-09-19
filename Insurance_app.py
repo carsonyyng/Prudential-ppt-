@@ -9,6 +9,7 @@ from pptx.enum.shapes import MSO_SHAPE
 import subprocess
 import os
 
+# 安全地在背景安裝瀏覽器
 @st.cache_resource
 def install_browser():
     subprocess.run(["playwright", "install", "chromium"])
@@ -122,7 +123,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     run.font.color.rgb = RGBColor(68, 114, 196) 
 
     # ==========================================
-    # 2. 中間第二個箭頭區塊 (Tiffany 藍) - 座標已整體下移 0.15 英吋
+    # 2. 中間第二個箭頭區塊 (Tiffany 藍)
     # ==========================================
     hdr2 = slide.shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(3.3), Inches(1.55), Inches(5.5), Inches(1.1))
     hdr2.fill.solid()
@@ -140,7 +141,6 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p2.font.color.rgb = RGBColor(255, 255, 255)
     p2.alignment = PP_ALIGN.LEFT
 
-    # 下方文字方塊頂部也同樣下移 0.15 英吋 (高度微縮以免出界)
     body2 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(3.3), Inches(2.65), Inches(3.2), Inches(3.35))
     body2.fill.solid()
     body2.fill.fore_color.rgb = RGBColor(255, 255, 255)
@@ -173,7 +173,8 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p3.font.color.rgb = RGBColor(255, 255, 255)
     p3.alignment = PP_ALIGN.LEFT
 
-    body3 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.4), Inches(3.1), Inches(3.5), Inches(3.4))
+    # 稍微拉長方塊高度至 3.6 吋以容納放大的字體與空白行
+    body3 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.4), Inches(3.1), Inches(3.5), Inches(3.6))
     body3.fill.solid()
     body3.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body3.line.color.rgb = RGBColor(112, 173, 71) 
@@ -182,34 +183,43 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     tf3_body.margin_left = Inches(0.1)
     tf3_body.margin_top = Inches(0.1)
     
+    # 放大部分文字，並加強重點顏色
     p = tf3_body.paragraphs[0]
-    p.text = "共收取現金約港幣"
-    p.font.size = Pt(14)
+    p.text = "共收取現金約港幣 "
+    p.font.size = Pt(18)
     p.font.color.rgb = RGBColor(0, 0, 0)
     run = p.add_run()
     run.text = f"{total_20_years:,.0f}"
+    run.font.size = Pt(18)
     run.font.color.rgb = RGBColor(255, 0, 0)
     
     p = tf3_body.add_paragraph()
     p.text = "\n身故賠償"
-    p.font.size = Pt(16)
+    p.font.size = Pt(20)
     p.font.color.rgb = RGBColor(0, 0, 0)
     
     p = tf3_body.add_paragraph()
     p.text = f"約港幣 {a_hkd:,.0f} - {b_hkd:,.0f} (逆按欠款) ，"
-    p.font.size = Pt(12)
+    p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
+    
+    # 增加空白行將算式與結果拉開
+    p_spacer = tf3_body.add_paragraph()
+    p_spacer.text = "\n\n" 
+    p_spacer.font.size = Pt(14)
     
     p = tf3_body.add_paragraph()
     p.text = "共約港幣 "
-    p.font.size = Pt(16)
+    p.font.size = Pt(20)
     p.font.color.rgb = RGBColor(0, 0, 0)
     run = p.add_run()
     run.text = f"{a_minus_b:,.0f}"
+    run.font.size = Pt(20)
     run.font.color.rgb = RGBColor(255, 0, 0)
     run.font.bold = True
     run2 = p.add_run()
     run2.text = " 給至愛親人"
+    run2.font.size = Pt(20)
     run2.font.color.rgb = RGBColor(0, 0, 0)
 
     # ==========================================
@@ -267,7 +277,6 @@ if st.button("掃描數據並生成 PPT"):
             total_20_years_hkd = annual_payout_hkd * 20  
             
             a_hkd = data['val_at_86_usd'] * EXCHANGE_RATE 
-            
             b_hkd = total_20_years_hkd * 1.46
             a_minus_b_hkd = a_hkd - b_hkd                 
             
