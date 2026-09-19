@@ -9,6 +9,7 @@ from pptx.enum.shapes import MSO_SHAPE
 import subprocess
 import os
 
+# 安全地在背景安裝瀏覽器
 @st.cache_resource
 def install_browser():
     subprocess.run(["playwright", "install", "chromium"])
@@ -84,7 +85,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
 
     prefix = "MR" if data['gender'] == "M" else "MS"
     tf1 = hdr1.text_frame
-    tf1.margin_left = Inches(1.2) # 將文字向右推以避開圖示
+    tf1.margin_left = Inches(1.2) 
     p1 = tf1.paragraphs[0]
     p1.text = f"{prefix} {data['name'].upper()} ({data['age']} 歲)"
     p1.font.size = Pt(26)
@@ -130,7 +131,6 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     hdr2.fill.fore_color.rgb = RGBColor(10, 186, 181) 
     hdr2.line.color.rgb = RGBColor(255, 255, 255)
     
-    # 加入中間圖示
     if os.path.exists("Middle header ppt picture.svg"):
         slide.shapes.add_picture("Middle header ppt picture.svg", Inches(3.4), Inches(1.5), height=Inches(0.9))
 
@@ -163,7 +163,6 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     hdr3.fill.fore_color.rgb = RGBColor(112, 173, 71) 
     hdr3.line.color.rgb = RGBColor(255, 255, 255)
     
-    # 加入最右側圖示
     if os.path.exists("RHS header ppt picture.svg"):
         slide.shapes.add_picture("RHS header ppt picture.svg", Inches(6.5), Inches(2.2), height=Inches(0.8))
 
@@ -180,7 +179,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     body3.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body3.line.color.rgb = RGBColor(112, 173, 71) 
     tf3_body = body3.text_frame
-    tf3_body.word_wrap = True # 允許文字自動換行
+    tf3_body.word_wrap = True 
     tf3_body.margin_left = Inches(0.1)
     tf3_body.margin_top = Inches(0.1)
     
@@ -197,7 +196,6 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p.font.size = Pt(16)
     p.font.color.rgb = RGBColor(0, 0, 0)
     
-    # 修正: 確保算式獨立一行並完整顯示 A - B
     p = tf3_body.add_paragraph()
     p.text = f"約港幣 {a_hkd:,.0f} - {b_hkd:,.0f} (逆按欠款) ，"
     p.font.size = Pt(12)
@@ -246,6 +244,10 @@ uploaded_file = st.file_uploader("上傳保單建議書 (PDF)", type="pdf")
 
 if st.button("掃描數據並生成 PPT"):
     if uploaded_file is not None:
+        
+        discount_multiplier = 10.0 - (discount_rate / 100.0)
+        st.info(f"💡 系統已套用供款乘數： 10 - {discount_rate/100} = {discount_multiplier}")
+        
         with st.spinner('🔄 正在讀取 PDF 數據...'):
             data = parse_insurance_pdf(uploaded_file)
             st.success(f"成功擷取客戶資訊: {data['name']}, {data['age']}歲, {data['gender']}")
@@ -254,7 +256,6 @@ if st.button("掃描數據並生成 PPT"):
             annual_premium_hkd = data['annual_premium_usd'] * EXCHANGE_RATE
             death_benefit_hkd = data['sum_assured_usd'] * EXCHANGE_RATE
             
-            discount_multiplier = 10.0 - (discount_rate / 100.0)
             total_contribution_hkd = annual_premium_hkd * discount_multiplier
             
             try:
@@ -267,7 +268,9 @@ if st.button("掃描數據並生成 PPT"):
             total_20_years_hkd = annual_payout_hkd * 20  
             
             a_hkd = data['val_at_86_usd'] * EXCHANGE_RATE 
-            b_hkd = annual_payout_hkd * 1.46
+            
+            # 修正 1.46 乘數的邏輯，將全年金額改為 20 年總金額
+            b_hkd = total_20_years_hkd * 1.46
             a_minus_b_hkd = a_hkd - b_hkd                 
             
             cost_performance = (total_20_years_hkd + a_minus_b_hkd) / total_contribution_hkd
