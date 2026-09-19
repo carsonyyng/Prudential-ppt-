@@ -180,6 +180,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     body3.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body3.line.color.rgb = RGBColor(112, 173, 71) 
     tf3_body = body3.text_frame
+    tf3_body.word_wrap = True # 允許文字自動換行
     tf3_body.margin_left = Inches(0.1)
     tf3_body.margin_top = Inches(0.1)
     
@@ -192,9 +193,14 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     run.font.color.rgb = RGBColor(255, 0, 0)
     
     p = tf3_body.add_paragraph()
-    p.text = "\n身故賠償\n"
-    p.text += f"約港幣 {a_hkd:,.0f} - {b_hkd:,.0f}\n(逆按欠款) ，\n\n"
-    p.font.size = Pt(14)
+    p.text = "\n身故賠償"
+    p.font.size = Pt(16)
+    p.font.color.rgb = RGBColor(0, 0, 0)
+    
+    # 修正: 確保算式獨立一行並完整顯示 A - B
+    p = tf3_body.add_paragraph()
+    p.text = f"約港幣 {a_hkd:,.0f} - {b_hkd:,.0f} (逆按欠款) ，"
+    p.font.size = Pt(12)
     p.font.color.rgb = RGBColor(0, 0, 0)
     
     p = tf3_body.add_paragraph()
@@ -204,6 +210,7 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     run = p.add_run()
     run.text = f"{a_minus_b:,.0f}"
     run.font.color.rgb = RGBColor(255, 0, 0)
+    run.font.bold = True
     run2 = p.add_run()
     run2.text = " 給至愛親人"
     run2.font.color.rgb = RGBColor(0, 0, 0)
