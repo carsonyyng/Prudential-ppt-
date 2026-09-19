@@ -9,7 +9,6 @@ from pptx.enum.shapes import MSO_SHAPE
 import subprocess
 import os
 
-# 安全地在背景安裝瀏覽器
 @st.cache_resource
 def install_browser():
     subprocess.run(["playwright", "install", "chromium"])
@@ -78,7 +77,6 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     hdr1.fill.fore_color.rgb = RGBColor(68, 114, 196) 
     hdr1.line.color.rgb = RGBColor(255, 255, 255)
     
-    # 加入性別圖示
     img1 = "Male ppt picture.svg" if data['gender'] == "M" else "Female ppt picture.svg"
     if os.path.exists(img1):
         slide.shapes.add_picture(img1, Inches(0.3), Inches(0.9), height=Inches(0.8))
@@ -124,15 +122,15 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     run.font.color.rgb = RGBColor(68, 114, 196) 
 
     # ==========================================
-    # 2. 中間第二個箭頭區塊 (Tiffany 藍)
+    # 2. 中間第二個箭頭區塊 (Tiffany 藍) - 座標已整體下移 0.15 英吋
     # ==========================================
-    hdr2 = slide.shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(3.3), Inches(1.4), Inches(5.5), Inches(1.1))
+    hdr2 = slide.shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(3.3), Inches(1.55), Inches(5.5), Inches(1.1))
     hdr2.fill.solid()
     hdr2.fill.fore_color.rgb = RGBColor(10, 186, 181) 
     hdr2.line.color.rgb = RGBColor(255, 255, 255)
     
     if os.path.exists("Middle header ppt picture.svg"):
-        slide.shapes.add_picture("Middle header ppt picture.svg", Inches(3.4), Inches(1.5), height=Inches(0.9))
+        slide.shapes.add_picture("Middle header ppt picture.svg", Inches(3.4), Inches(1.65), height=Inches(0.9))
 
     tf2 = hdr2.text_frame
     tf2.margin_left = Inches(1.1)
@@ -142,7 +140,8 @@ def generate_ppt(data, discount_rate, annual_premium_hkd, death_benefit_hkd,
     p2.font.color.rgb = RGBColor(255, 255, 255)
     p2.alignment = PP_ALIGN.LEFT
 
-    body2 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(3.3), Inches(2.5), Inches(3.2), Inches(3.5))
+    # 下方文字方塊頂部也同樣下移 0.15 英吋 (高度微縮以免出界)
+    body2 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(3.3), Inches(2.65), Inches(3.2), Inches(3.35))
     body2.fill.solid()
     body2.fill.fore_color.rgb = RGBColor(255, 255, 255)
     body2.line.color.rgb = RGBColor(10, 186, 181) 
@@ -269,7 +268,6 @@ if st.button("掃描數據並生成 PPT"):
             
             a_hkd = data['val_at_86_usd'] * EXCHANGE_RATE 
             
-            # 修正 1.46 乘數的邏輯，將全年金額改為 20 年總金額
             b_hkd = total_20_years_hkd * 1.46
             a_minus_b_hkd = a_hkd - b_hkd                 
             
